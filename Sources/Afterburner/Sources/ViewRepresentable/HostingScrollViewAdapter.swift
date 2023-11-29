@@ -7,6 +7,151 @@
 import SwiftUI
 import Engine
 import Turbocharger
+import Transmission
+
+open class HostingScrollView<Content: View>: UIScrollView {
+
+    open var axis: Axis.Set {
+        didSet {
+            if oldValue != axis {
+                layoutAxisDidChange()
+                setNeedsLayout()
+            }
+        }
+    }
+
+    open var showsIndicators: Bool {
+        didSet {
+            showsVerticalScrollIndicator = showsIndicators && axis.contains(.vertical)
+            showsHorizontalScrollIndicator = showsIndicators && axis.contains(.horizontal)
+        }
+    }
+
+    open override var isPagingEnabled: Bool {
+        didSet {
+            layoutAxisDidChange()
+        }
+    }
+
+    public var content: Content {
+        get { host.content }
+        set {
+            host.content = newValue
+            setNeedsLayout()
+        }
+    }
+
+    open override var alwaysBounceVertical: Bool {
+        get { bounces && axis.contains(.vertical) }
+        set { }
+    }
+
+    open override var alwaysBounceHorizontal: Bool {
+        get { bounces && axis.contains(.horizontal) }
+        set { }
+    }
+
+    open override var intrinsicContentSize: CGSize {
+        var size = host.intrinsicContentSize
+        if axis.contains(.vertical) {
+            size.height = UIView.noIntrinsicMetric
+        }
+        if axis.contains(.horizontal) {
+            size.width = UIView.noIntrinsicMetric
+        }
+        return size
+    }
+
+    private var heightConstraint: NSLayoutConstraint!
+    private var widthConstraint: NSLayoutConstraint!
+    private let host: HostingView<Content>
+
+    public init(
+        axis: Axis.Set = .vertical,
+        showsIndicators: Bool = false,
+        content: Content
+    ) {
+        self.axis = axis
+        self.showsIndicators = showsIndicators
+        self.host = HostingView(content: content)
+        super.init(frame: .zero)
+
+        clipsToBounds = false
+
+        keyboardDismissMode = .interactive
+
+        addSubview(host)
+        host.disablesSafeArea = true
+        host.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.topAnchor.constraint(equalTo: topAnchor),
+            host.bottomAnchor.constraint(equalTo: bottomAnchor),
+            host.leadingAnchor.constraint(equalTo:  leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+
+        heightConstraint = host.heightAnchor.constraint(
+            equalTo: heightAnchor
+        )
+        widthConstraint = host.widthAnchor.constraint(
+            equalTo: widthAnchor
+        )
+
+        layoutAxisDidChange()
+    }
+
+    public convenience init(
+        axis: Axis.Set = .vertical,
+        showsIndicators: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(axis: axis, showsIndicators: showsIndicators, content: content())
+    }
+
+    public required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    open override func layoutSubviews() {
+        super.layoutSubviews()
+
+        var size = host.sizeThatFits(
+            CGSize(
+                width: axis.contains(.horizontal) ? .infinity : bounds.size.width,
+                height: axis.contains(.vertical) ? .infinity : bounds.size.height
+            )
+        )
+        if axis.contains(.vertical) {
+            size.width = max(bounds.size.width, size.width)
+        }
+        if axis.contains(.horizontal) {
+            size.height = max(bounds.size.height, size.height)
+        }
+        contentSize = size
+        host.frame.size = size
+    }
+
+    private func layoutAxisDidChange() {
+        setContentHuggingPriority(
+            axis.contains(.horizontal) ? .defaultLow : .fittingSizeLevel,
+            for: .horizontal
+        )
+        setContentCompressionResistancePriority(
+            .fittingSizeLevel,
+            for: .horizontal
+        )
+        setContentHuggingPriority(
+            axis.contains(.vertical) ? .defaultLow : .fittingSizeLevel,
+            for: .vertical
+        )
+        setContentCompressionResistancePriority(
+            axis.contains(.horizontal) ? .defaultHigh : .fittingSizeLevel,
+            for: .vertical
+        )
+        widthConstraint.isActive = axis.contains(.vertical)
+        heightConstraint.isActive = axis.contains(.horizontal)
+    }
+}
 
 public struct HostingScrollViewAdapter<Content: View>: View {
     var axis: Axis.Set
@@ -17,7 +162,7 @@ public struct HostingScrollViewAdapter<Content: View>: View {
 
     public init(
         _ axis: Axis.Set = [.vertical],
-        showsIndicators: Bool = false,
+        showsIndicators: Bool = true,
         isPagingEnabled: Bool = false,
         bounces: Bool = true,
         @ViewBuilder content: () -> Content
@@ -139,14 +284,6 @@ private struct HostingScrollViewAdapterBody<
         }
     }
 
-//    func _overrideSizeThatFits(
-//        _ size: inout CGSize,
-//        in proposedSize: _ProposedSize,
-//        uiView: UIViewType
-//    ) {
-//        size = uiView.sizeThatFits(ProposedSize(proposedSize).toUIKit())
-//    }
-
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -212,6 +349,27 @@ private struct HostingScrollViewAdapterBody<
 
 struct HostingScrollViewAdapter_Previews: PreviewProvider {
     static var previews: some View {
+        ScrollView {
+            let inset: CGFloat = 12
+            HostingScrollViewAdapter(
+                .horizontal,
+                showsIndicators: false,
+                isPagingEnabled: true
+            ) {
+                HStack(spacing: 0) {
+                    Group {
+                        Color.red
+                        Color.blue
+                        Color.yellow
+                    }
+                    .padding(.horizontal, inset / 2)
+                    .aspectRatio(2, contentMode: .fit)
+                }
+            }
+            .aspectRatio(2, contentMode: .fit)
+            .padding(.horizontal, inset)
+        }
+
         GeometryReader { proxy in
             let inset: CGFloat = 12
             ScrollView {

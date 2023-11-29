@@ -8,6 +8,7 @@ import SwiftUI
 import Turbocharger
 import Transmission
 
+/*
 open class HostingScrollView<Content: View>: UIScrollView {
 
     public var axis: Axis.Set {
@@ -83,8 +84,12 @@ open class HostingScrollView<Content: View>: UIScrollView {
             host.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
 
-        heightConstraint = host.heightAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.heightAnchor, constant: -0.33)
-        widthConstraint = host.widthAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.widthAnchor, constant: -0.33)
+        heightConstraint = host.heightAnchor.constraint(
+            equalTo: heightAnchor
+        )
+        widthConstraint = host.widthAnchor.constraint(
+            equalTo: widthAnchor
+        )
 
         layoutAxisDidChange()
     }
@@ -115,12 +120,13 @@ open class HostingScrollView<Content: View>: UIScrollView {
             for: .vertical
         )
         setContentCompressionResistancePriority(
-            .fittingSizeLevel,
+            axis.contains(.horizontal) ? .defaultHigh : .fittingSizeLevel,
             for: .vertical
         )
         widthConstraint.isActive = axis.contains(.vertical)
         heightConstraint.isActive = axis.contains(.horizontal)
     }
 }
+*/
 
 #endif
